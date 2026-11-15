@@ -1,0 +1,1608 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>SecureChat Nexus</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        nexus: {
+                            bg1: '#020617', // Slate 950
+                            bg2: '#0f172a', // Slate 900
+                            bg3: '#1e1b4b', // Indigo 950
+                            panel: 'rgba(255, 255, 255, 0.03)',
+                            panelHover: 'rgba(255, 255, 255, 0.08)',
+                            border: 'rgba(255, 255, 255, 0.1)',
+                            accent1: '#00f2fe', // Neon Cyan
+                            accent2: '#4facfe', // Electric Blue
+                            text: '#f8fafc',
+                            textMuted: '#94a3b8'
+                        }
+                    },
+                    animation: {
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'slide-up': 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'ping-slow': 'ping 3s cubic-bezier(0, 0, 0.2, 1) infinite',
+                        'radar': 'radar 2s linear infinite'
+                    },
+                    keyframes: {
+                        glow: {
+                            '0%': { boxShadow: '0 0 5px #00f2fe, 0 0 10px #00f2fe' },
+                            '100%': { boxShadow: '0 0 15px #4facfe, 0 0 25px #4facfe' }
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(15px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        },
+                        radar: {
+                            '0%': { transform: 'scale(0.5)', opacity: '1' },
+                            '100%': { transform: 'scale(2.5)', opacity: '0' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Custom CSS -->
+    <style>
+        body {
+            background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e1b4b 100%);
+            background-attachment: fixed;
+        }
+
+        /* Glassmorphism utilities */
+        .glass {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Sleek Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Input overrides */
+        textarea::-webkit-scrollbar { display: none; }
+        textarea { scrollbar-width: none; }
+
+        .msg-out {
+            background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+            color: #000;
+            box-shadow: 0 4px 15px rgba(0, 242, 254, 0.2);
+            border-bottom-right-radius: 4px !important;
+        }
+        
+        .msg-in {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-bottom-left-radius: 4px !important;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #00f2fe, #4facfe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .typing-dot {
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        
+        /* Mobile Specific Overrides */
+        .mobile-device * { -webkit-tap-highlight-color: transparent; }
+        .mobile-device textarea { font-size: 16px !important; }
+        .mobile-device .glass { backdrop-filter: blur(10px); }
+        .mobile-device ::-webkit-scrollbar { display: none; }
+
+        /* ---- Mobil / iOS düzeltmeleri ---- */
+        html { height: 100%; overflow: hidden; }
+        body {
+            position: fixed; top: 0; left: 0; right: 0; width: 100%;
+            overscroll-behavior: none;
+            padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px);
+        }
+        #messages-container { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+        /* iOS, 16px altı input'a odaklanınca sayfayı yakınlaştırıp layout'u kaydırır */
+        @media (pointer: coarse) { input, textarea { font-size: 16px !important; } }
+        /* Çentik/ana ekran çubuğu payı; klavye açıkken gerekmez */
+        html #active-chat-footer { padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
+        html.kbd-open #active-chat-footer { padding-bottom: 0.75rem; }
+    </style>
+    
+    <!-- Lucide Icons (jsDelivr birincil, unpkg yedek) -->
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script>window.lucide || document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');</script>
+    <script>window.lucide || (window.lucide = { createIcons: function () {} });</script>
+    <!-- PeerJS (jsDelivr birincil, unpkg yedek) -->
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script>window.Peer || document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>');</script>
+</head>
+<body class="text-nexus-text h-[100dvh] flex overflow-hidden selection:bg-nexus-accent1 selection:text-black">
+
+    <!-- Ambient Glow Orbs -->
+    <div class="absolute top-0 left-0 w-96 h-96 bg-nexus-accent1 rounded-full mix-blend-screen filter blur-[150px] opacity-10 pointer-events-none"></div>
+    <div class="absolute bottom-0 right-0 w-96 h-96 bg-purple-600 rounded-full mix-blend-screen filter blur-[150px] opacity-10 pointer-events-none"></div>
+
+    <!-- App Container -->
+    <div class="flex w-full h-full max-w-[1800px] mx-auto relative z-10 p-0 sm:p-4 md:p-6">
+        
+        <!-- Inner Wrapper for Glass Effect -->
+        <div class="flex w-full h-full glass rounded-none sm:rounded-3xl overflow-hidden shadow-2xl">
+            
+            <!-- Sidebar -->
+            <aside class="w-full md:w-[350px] lg:w-[400px] flex md:flex flex-col min-h-0 border-r border-nexus-border transition-all duration-300" id="sidebar">
+                
+                <!-- Header -->
+                <header class="h-20 px-6 flex items-center justify-between shrink-0 border-b border-nexus-border bg-white/5">
+                    <div class="flex items-center gap-4">
+                        <div class="relative group cursor-pointer" id="profile-avatar">
+                            <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-nexus-accent1 p-0.5">
+                                <img src="https://ui-avatars.com/api/?name=Me&background=020617&color=00f2fe&bold=true" class="w-full h-full rounded-full object-cover">
+                            </div>
+                            <!-- Online Indicator Pulse -->
+                            <div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-nexus-accent1 rounded-full border-2 border-[#0f172a]"></div>
+                            <div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-nexus-accent1 rounded-full animate-ping"></div>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-xs text-nexus-textMuted uppercase tracking-wider font-semibold">Nexus ID</span>
+                            <div class="flex items-center gap-2 cursor-pointer group" id="copy-my-id-btn" title="Kopyalamak için tıkla">
+                                <span class="text-sm font-mono gradient-text font-bold" id="my-peer-id">Ağ Bekleniyor...</span>
+                                <i data-lucide="copy" class="w-3.5 h-3.5 text-nexus-textMuted group-hover:text-nexus-accent1 transition-colors"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 relative">
+                        <button class="p-2 rounded-xl hover:bg-nexus-panelHover transition-colors" id="btn-new-group" title="Yeni Ağ/Grup">
+                            <i data-lucide="network" class="w-5 h-5 text-nexus-textMuted hover:text-nexus-accent1"></i>
+                        </button>
+                        <button class="p-2 rounded-xl hover:bg-nexus-panelHover transition-colors" id="btn-new-chat" title="Güvenli Bağlantı Kur">
+                            <i data-lucide="zap" class="w-5 h-5 text-nexus-textMuted hover:text-nexus-accent1"></i>
+                        </button>
+                        <button class="p-2 rounded-xl hover:bg-nexus-panelHover transition-colors" id="btn-menu" title="Sistem Menüsü">
+                            <i data-lucide="more-vertical" class="w-5 h-5 text-nexus-textMuted"></i>
+                        </button>
+
+                        <!-- Glass Dropdown -->
+                        <div id="menu-dropdown" class="hidden absolute top-12 right-0 glass-panel rounded-xl w-56 z-50 py-2 origin-top-right animate-slide-up">
+                            <div class="px-4 py-2.5 hover:bg-white/10 cursor-pointer text-sm transition-colors flex items-center gap-3" id="btn-clear-history">
+                                <i data-lucide="trash-2" class="w-4 h-4 text-rose-400"></i> Yerel Verileri Temizle
+                            </div>
+                            <div class="px-4 py-2.5 hover:bg-white/10 cursor-pointer text-sm transition-colors flex items-center gap-3" id="btn-reset-id">
+                                <i data-lucide="refresh-cw" class="w-4 h-4 text-nexus-accent1"></i> Kimlik Rejenerasyonu
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Search -->
+                <div class="p-4 border-b border-nexus-border bg-black/10">
+                    <div class="bg-black/20 border border-nexus-border rounded-xl flex items-center px-4 py-2.5 gap-3 focus-within:border-nexus-accent1 focus-within:ring-1 focus-within:ring-nexus-accent1 transition-all shadow-inner">
+                        <i data-lucide="search" class="w-4 h-4 text-nexus-textMuted shrink-0"></i>
+                        <input type="text" id="search-input" placeholder="Ağda ara..." class="bg-transparent border-none outline-none text-sm w-full placeholder:text-nexus-textMuted text-white">
+                    </div>
+                </div>
+
+                <!-- Action Panels -->
+                <div id="new-connection-panel" class="hidden bg-nexus-accent1/5 p-5 flex flex-col gap-3 border-b border-nexus-accent1/20 animate-slide-up">
+                    <div class="text-sm font-semibold gradient-text flex items-center gap-2">
+                        <i data-lucide="zap" class="w-4 h-4"></i> Uçtan Uca Bağlantı
+                    </div>
+                    <p class="text-[11px] text-nexus-textMuted leading-relaxed">Güvenli P2P kanalı açmak için karşı tarafın Nexus ID'sini girin.</p>
+                    <div class="flex gap-2">
+                        <input type="text" id="peer-id-input" placeholder="Örn: cesur-kartal-512" class="bg-black/30 border border-nexus-border rounded-xl px-4 py-2.5 text-sm w-full outline-none focus:border-nexus-accent1 text-white font-mono transition-colors">
+                        <button id="connect-btn" class="bg-gradient-to-r from-nexus-accent1 to-nexus-accent2 text-black rounded-xl px-5 font-bold transition-all hover:scale-105 hover:shadow-[0_0_15px_rgba(0,242,254,0.5)] flex items-center justify-center shrink-0">
+                            <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="new-group-panel" class="hidden bg-purple-500/5 p-5 flex flex-col gap-3 border-b border-purple-500/20 animate-slide-up">
+                    <div class="text-sm font-semibold text-purple-400 flex items-center gap-2">
+                        <i data-lucide="network" class="w-4 h-4"></i> Şifreli Ağ Oluştur
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="group-name-input" placeholder="Ağ Adı" class="bg-black/30 border border-nexus-border rounded-xl px-4 py-2.5 text-sm w-full outline-none focus:border-purple-400 text-white transition-colors">
+                        <button id="create-group-btn" class="bg-purple-500 text-white rounded-xl px-5 font-bold transition-all hover:scale-105 hover:shadow-[0_0_15px_rgba(168,85,247,0.5)] flex items-center justify-center shrink-0">
+                            <i data-lucide="plus" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Chat List -->
+                <div class="flex-1 min-h-0 overflow-y-auto" id="chat-list">
+                    <!-- Injected here -->
+                    <div class="flex flex-col items-center justify-center h-full text-nexus-textMuted p-8 text-center space-y-5">
+                        <div class="relative w-20 h-20 flex items-center justify-center">
+                            <div class="absolute inset-0 border-2 border-nexus-accent1 rounded-full opacity-20 animate-ping-slow"></div>
+                            <div class="absolute inset-2 border-2 border-nexus-accent2 rounded-full opacity-40 animate-pulse"></div>
+                            <i data-lucide="fingerprint" class="w-8 h-8 text-nexus-accent1 relative z-10"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-white mb-2">Ağ Boş</p>
+                            <p class="text-xs leading-relaxed">Kimliğinizi paylaşın veya bir kimliğe bağlanarak güvenli veri aktarımına başlayın.</p>
+                        </div>
+                        <div class="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-full font-semibold">
+                            Sunucu Kaydı Yok
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Chat Area -->
+            <main class="hidden md:flex flex-1 flex-col relative bg-black/20 min-h-0 min-w-0 h-full overflow-hidden" id="main-chat">
+                
+                <!-- Empty State -->
+                <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center z-10 backdrop-blur-md">
+                    <div class="relative z-10 flex flex-col items-center max-w-lg text-center p-8">
+                        <div class="relative w-32 h-32 mb-8 flex items-center justify-center">
+                            <div class="absolute inset-0 bg-nexus-accent1/10 rounded-full animate-pulse filter blur-xl"></div>
+                            <i data-lucide="shield" class="w-16 h-16 text-nexus-accent1 animate-pulse relative z-10"></i>
+                            <div class="absolute inset-0 border border-nexus-accent1/30 rounded-full animate-[spin_10s_linear_infinite]"></div>
+                            <div class="absolute inset-4 border border-nexus-accent2/30 rounded-full animate-[spin_7s_linear_infinite_reverse]"></div>
+                        </div>
+                        <h1 class="text-4xl font-bold mb-4 tracking-tight gradient-text">NEXUS PROTOCOL</h1>
+                        <p class="text-nexus-textMuted text-sm leading-relaxed mb-8">
+                            Merkeziyetsiz, sunucusuz ve askeri düzeyde uçtan uca şifreli iletişim. Kapatıldığında tüm birebir veriler imha edilir.
+                        </p>
+                        <div class="flex items-center gap-6 text-xs font-mono">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-nexus-accent1 animate-pulse"></span> P2P Aktif
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-rose-500"></span> 0 Bayt Sunucu İzi
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Chat Header -->
+                <header id="active-chat-header" class="hidden h-20 px-6 flex items-center justify-between z-20 border-b border-nexus-border bg-white/5 backdrop-blur-md shrink-0">
+                    <div class="flex items-center gap-4">
+                        <button class="md:hidden text-nexus-textMuted hover:text-white transition-colors" id="btn-back">
+                            <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                        </button>
+                        <div class="relative w-12 h-12 rounded-full overflow-hidden border border-nexus-border bg-black/50 p-1">
+                            <div class="w-full h-full rounded-full bg-nexus-accent1/20 flex items-center justify-center" id="active-avatar-container">
+                                <i data-lucide="user" class="w-6 h-6 text-nexus-accent1"></i>
+                            </div>
+                        </div>
+                        <div class="flex flex-col justify-center">
+                            <div class="flex items-center gap-3">
+                                <span class="text-lg font-semibold text-white tracking-wide" id="active-chat-name">ID</span>
+                                <span id="ping-indicator" class="hidden text-[10px] font-mono bg-black/40 px-2 py-0.5 rounded-full border border-white/10 text-emerald-400">Ping: --</span>
+                            </div>
+                            <div class="text-xs mt-0.5 flex items-center gap-1.5" id="chat-status-indicator">
+                                <!-- Injected by JS -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button class="p-2.5 rounded-xl bg-white/5 hover:bg-nexus-accent1/20 text-nexus-text hover:text-nexus-accent1 transition-all" title="Sesli Sinyal" id="btn-audio-call">
+                            <i data-lucide="phone" class="w-5 h-5"></i>
+                        </button>
+                        <button class="p-2.5 rounded-xl bg-white/5 hover:bg-nexus-accent1/20 text-nexus-text hover:text-nexus-accent1 transition-all" title="Görüntülü Sinyal" id="btn-video-call">
+                            <i data-lucide="video" class="w-5 h-5"></i>
+                        </button>
+                        <button class="hidden p-2.5 rounded-xl bg-white/5 hover:bg-purple-500/20 text-nexus-text hover:text-purple-400 transition-all" title="Düğüm Ekle" id="btn-add-member">
+                            <i data-lucide="user-plus" class="w-5 h-5"></i>
+                        </button>
+                        <div class="w-px h-6 bg-nexus-border mx-2"></div>
+                        <button class="p-2.5 rounded-xl hover:bg-rose-500/20 text-nexus-textMuted hover:text-rose-400 transition-all" title="Bağlantıyı Kes" id="btn-disconnect">
+                            <i data-lucide="power" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Add Member Panel -->
+                <div id="add-member-panel" class="hidden bg-purple-900/40 px-6 py-4 border-b border-purple-500/30 z-20 flex items-center gap-4 animate-slide-up backdrop-blur-md">
+                    <i data-lucide="share-2" class="w-5 h-5 text-purple-400"></i>
+                    <input type="text" id="member-id-input" placeholder="Düğüm ID Girin" class="bg-black/40 border border-purple-500/30 rounded-xl px-4 py-2 text-sm w-full outline-none focus:border-purple-400 transition-colors text-white font-mono">
+                    <button id="confirm-add-member-btn" class="bg-purple-500 hover:bg-purple-400 text-white rounded-xl px-6 py-2 font-bold transition-all shadow-[0_0_10px_rgba(168,85,247,0.3)]">Kat</button>
+                    <button id="btn-close-add-member" class="text-nexus-textMuted hover:text-white p-2">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <!-- Messages Area -->
+                <div id="messages-container" class="hidden flex-1 min-h-0 overflow-y-auto p-4 md:p-8 space-y-4 relative z-10">
+                    <!-- Encryption Notice -->
+                    <div class="flex justify-center mb-8 relative z-10">
+                        <div class="glass-panel text-nexus-textMuted text-[11px] px-4 py-2 rounded-xl flex items-center gap-3 max-w-lg text-center border-t border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.05)]">
+                            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                            <span>ECDH + AES-256-GCM ile uçtan uca şifreli. Anahtarlar oturum başına üretilir ve hiçbir sunucuya gönderilmez. Mesajlar yalnızca sizin ve karşı tarafın cihazında okunabilir.</span>
+                        </div>
+                    </div>
+
+                    <div id="messages-list" class="flex flex-col space-y-3 relative z-10 pb-4">
+                        <!-- Messages -->
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <footer id="active-chat-footer" class="hidden bg-black/40 px-4 md:px-6 py-4 flex items-end gap-3 z-20 shrink-0 border-t border-nexus-border backdrop-blur-xl">
+                    <label for="file-input" id="btn-attach" class="p-3 text-nexus-textMuted hover:text-nexus-accent1 hover:bg-white/5 rounded-xl transition-all shrink-0 cursor-pointer flex items-center justify-center m-0">
+                        <i data-lucide="paperclip" class="w-6 h-6"></i>
+                    </label>
+                    <div class="flex-1 bg-white/5 border border-white/10 rounded-2xl flex items-end px-4 py-1 focus-within:border-nexus-accent1/50 focus-within:bg-black/50 transition-all shadow-inner relative">
+                        <textarea id="message-input" rows="1" placeholder="Güvenli mesaj ilet..." class="bg-transparent border-none outline-none text-white w-full resize-none max-h-32 text-[15px] placeholder:text-nexus-textMuted py-3 leading-relaxed font-medium"></textarea>
+                    </div>
+                    <button id="btn-send" class="bg-gradient-to-r from-nexus-accent1 to-nexus-accent2 text-black p-3.5 rounded-2xl shrink-0 transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(0,242,254,0.4)] flex items-center justify-center group">
+                        <i data-lucide="send" class="w-5 h-5 ml-0.5 group-hover:translate-x-1 transition-transform"></i>
+                    </button>
+                    <input type="file" id="file-input" accept="*/*" class="hidden">
+                </footer>
+            </main>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed top-6 left-1/2 transform -translate-x-1/2 glass-panel border-t border-nexus-accent1/50 text-white px-5 py-3 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] opacity-0 transition-all duration-300 pointer-events-none z-[100] flex items-center gap-3 translate-y-[-20px]">
+        <i data-lucide="info" class="w-5 h-5 text-nexus-accent1"></i>
+        <span id="toast-msg" class="text-sm font-medium">Notification</span>
+    </div>
+
+    <!-- Call Modal (Futuristic) -->
+    <div id="call-modal" class="hidden fixed inset-0 z-[200] bg-nexus-bg1/95 backdrop-blur-2xl flex flex-col items-center justify-center">
+        <!-- Radar background -->
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+            <div class="w-[800px] h-[800px] border border-nexus-accent1 rounded-full absolute animate-radar"></div>
+            <div class="w-[800px] h-[800px] border border-nexus-accent1 rounded-full absolute animate-radar" style="animation-delay: 1s"></div>
+        </div>
+
+        <div class="absolute top-8 text-nexus-accent1 font-mono tracking-widest text-xl animate-pulse" id="call-status">SİNYAL GÖNDERİLİYOR...</div>
+        
+        <div class="relative w-full max-w-5xl aspect-video rounded-3xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] bg-black/50 z-10">
+            <video id="remote-video" autoplay playsinline class="w-full h-full object-cover"></video>
+            <div class="absolute inset-0 shadow-[inset_0_0_100px_rgba(0,0,0,0.8)] pointer-events-none"></div>
+            
+            <div class="absolute bottom-6 right-6 w-32 md:w-48 aspect-video rounded-2xl overflow-hidden border-2 border-nexus-accent1/50 shadow-2xl">
+                <video id="local-video" autoplay playsinline muted class="w-full h-full object-cover bg-black"></video>
+            </div>
+        </div>
+        <audio id="remote-audio" autoplay></audio>
+        
+        <div class="absolute bottom-12 flex gap-8 z-20 glass-panel p-4 rounded-3xl">
+            <button id="btn-toggle-mic" class="bg-white/10 hover:bg-white/20 text-white p-5 rounded-2xl transition-all hover:scale-105 border border-white/10">
+                <i data-lucide="mic" class="w-7 h-7"></i>
+            </button>
+            <button id="btn-toggle-cam" class="bg-white/10 hover:bg-white/20 text-white p-5 rounded-2xl transition-all hover:scale-105 border border-white/10">
+                <i data-lucide="camera" class="w-7 h-7"></i>
+            </button>
+            <button id="btn-end-call" class="bg-rose-500 hover:bg-rose-400 text-white p-5 rounded-2xl transition-all hover:scale-105 shadow-[0_0_20px_rgba(244,63,94,0.4)]">
+                <i data-lucide="phone-off" class="w-7 h-7"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Incoming Call Modal -->
+    <div id="incoming-call-modal" class="hidden fixed inset-0 z-[200] bg-nexus-bg1/95 backdrop-blur-xl flex flex-col items-center justify-center">
+        <div class="relative w-32 h-32 mb-8">
+            <div class="absolute inset-0 bg-nexus-accent1/20 rounded-full animate-ping"></div>
+            <div class="absolute inset-0 bg-nexus-accent1/40 rounded-full animate-pulse"></div>
+            <div class="relative w-full h-full glass rounded-full flex items-center justify-center border-2 border-nexus-accent1 shadow-[0_0_30px_rgba(0,242,254,0.5)]">
+                <i data-lucide="radio" class="w-12 h-12 text-nexus-accent1 animate-pulse"></i>
+            </div>
+        </div>
+        
+        <h2 class="text-white text-3xl font-light mb-2 tracking-wide">Gelen Sinyal</h2>
+        <p id="caller-id-display" class="text-nexus-accent1 mb-16 font-mono text-xl tracking-wider"></p>
+        
+        <div class="flex gap-12">
+            <button id="btn-reject-call" class="group flex flex-col items-center gap-4">
+                <div class="bg-rose-500/20 text-rose-500 p-6 rounded-full transition-all group-hover:bg-rose-500 group-hover:text-white border border-rose-500/50 group-hover:scale-110 shadow-[0_0_20px_rgba(244,63,94,0.2)]">
+                    <i data-lucide="x" class="w-8 h-8"></i>
+                </div>
+                <span class="text-xs font-semibold text-rose-500 tracking-widest uppercase">Reddet</span>
+            </button>
+            <button id="btn-accept-call" class="group flex flex-col items-center gap-4">
+                <div class="bg-emerald-500/20 text-emerald-400 p-6 rounded-full transition-all group-hover:bg-emerald-500 group-hover:text-white border border-emerald-500/50 group-hover:scale-110 shadow-[0_0_20px_rgba(16,185,129,0.2)] animate-bounce">
+                    <i data-lucide="phone" class="w-8 h-8"></i>
+                </div>
+                <span class="text-xs font-semibold text-emerald-400 tracking-widest uppercase">Kabul Et</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Device Selection Modal -->
+    <div id="device-selection-modal" class="fixed inset-0 z-[300] bg-nexus-bg1/95 backdrop-blur-xl flex flex-col items-center justify-center">
+        <div class="relative w-24 h-24 mb-6">
+            <div class="absolute inset-0 bg-nexus-accent1/20 rounded-full animate-ping"></div>
+            <div class="relative w-full h-full glass rounded-full flex items-center justify-center border-2 border-nexus-accent1 shadow-[0_0_30px_rgba(0,242,254,0.5)]">
+                <i data-lucide="monitor-smartphone" class="w-10 h-10 text-nexus-accent1"></i>
+            </div>
+        </div>
+        <h2 class="text-white text-3xl font-light mb-8 tracking-wide text-center px-4">Cihaz Türünü Seçin</h2>
+        <div class="flex flex-col sm:flex-row gap-6 w-full max-w-lg px-6">
+            <button id="btn-device-mobile" class="flex-1 group flex flex-col items-center gap-4 p-6 glass-panel rounded-3xl hover:bg-white/10 transition-all border border-white/10 hover:border-nexus-accent1">
+                <i data-lucide="smartphone" class="w-12 h-12 text-nexus-accent1 group-hover:scale-110 transition-transform"></i>
+                <span class="text-lg font-semibold text-white">Telefon (Mobil)</span>
+                <span class="text-[11px] text-nexus-textMuted text-center">Mobil arayüz, WebView uyumluluğu<br/>ve performans optimizasyonu.</span>
+            </button>
+            <button id="btn-device-desktop" class="flex-1 group flex flex-col items-center gap-4 p-6 glass-panel rounded-3xl hover:bg-white/10 transition-all border border-white/10 hover:border-purple-400">
+                <i data-lucide="monitor" class="w-12 h-12 text-purple-400 group-hover:scale-110 transition-transform"></i>
+                <span class="text-lg font-semibold text-white">Masaüstü (PC)</span>
+                <span class="text-[11px] text-nexus-textMuted text-center">Tam deneyim.<br/>Tüm özellikler aktif.</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+// ============================================
+// E2EE CRYPTO MODULE (ECDH + AES-256-GCM)
+// ============================================
+const CryptoEngine = {
+    myKeyPair: null,
+
+    async init() {
+        this.myKeyPair = await crypto.subtle.generateKey(
+            { name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveKey']
+        );
+    },
+
+    async exportPublicKey() {
+        return await crypto.subtle.exportKey('jwk', this.myKeyPair.publicKey);
+    },
+
+    async deriveSharedKey(peerPublicKeyJwk) {
+        const peerPub = await crypto.subtle.importKey(
+            'jwk', peerPublicKeyJwk, { name: 'ECDH', namedCurve: 'P-256' }, false, []
+        );
+        return await crypto.subtle.deriveKey(
+            { name: 'ECDH', public: peerPub },
+            this.myKeyPair.privateKey,
+            { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+        );
+    },
+
+    async encrypt(sharedKey, plaintext) {
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const enc = new TextEncoder();
+        const ct = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv }, sharedKey, enc.encode(plaintext)
+        );
+        return { iv: Array.from(iv), ct: Array.from(new Uint8Array(ct)) };
+    },
+
+    async decrypt(sharedKey, payload) {
+        const iv = new Uint8Array(payload.iv);
+        const ct = new Uint8Array(payload.ct);
+        const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, sharedKey, ct);
+        return new TextDecoder().decode(pt);
+    },
+
+    async encryptBlob(sharedKey, base64data) {
+        return await this.encrypt(sharedKey, base64data);
+    },
+
+    async decryptBlob(sharedKey, payload) {
+        return await this.decrypt(sharedKey, payload);
+    }
+};
+
+// State Management
+let isMobileDevice = false;
+let peer = null;
+let myId = null;
+let peers = {}; // id -> { conn, name, messages: [], lastPing: int, isTyping: bool, sharedKey: CryptoKey|null, e2ee: bool }
+let groups = {}; // groupId -> { name, members: [], messages: [], isHost: bool }
+let activePeerId = null; 
+let isGroupActive = false; 
+
+// DOM Elements
+const myPeerIdEl = document.getElementById('my-peer-id');
+const copyMyIdBtn = document.getElementById('copy-my-id-btn');
+const btnNewChat = document.getElementById('btn-new-chat');
+const btnNewGroup = document.getElementById('btn-new-group');
+const newConnectionPanel = document.getElementById('new-connection-panel');
+const newGroupPanel = document.getElementById('new-group-panel');
+const peerIdInput = document.getElementById('peer-id-input');
+const groupNameInput = document.getElementById('group-name-input');
+const connectBtn = document.getElementById('connect-btn');
+const createGroupBtn = document.getElementById('create-group-btn');
+const chatListEl = document.getElementById('chat-list');
+const searchInput = document.getElementById('search-input');
+
+const btnMenu = document.getElementById('btn-menu');
+const menuDropdown = document.getElementById('menu-dropdown');
+const btnClearHistory = document.getElementById('btn-clear-history');
+const btnResetId = document.getElementById('btn-reset-id');
+
+const mainChat = document.getElementById('main-chat');
+const emptyState = document.getElementById('empty-state');
+const activeChatHeader = document.getElementById('active-chat-header');
+const activeChatFooter = document.getElementById('active-chat-footer');
+const messagesContainer = document.getElementById('messages-container');
+const messagesList = document.getElementById('messages-list');
+const activeChatName = document.getElementById('active-chat-name');
+const chatStatusIndicator = document.getElementById('chat-status-indicator');
+const pingIndicator = document.getElementById('ping-indicator');
+const btnBack = document.getElementById('btn-back');
+const btnDisconnect = document.getElementById('btn-disconnect');
+const messageInput = document.getElementById('message-input');
+const btnSend = document.getElementById('btn-send');
+const toast = document.getElementById('toast');
+const toastMsg = document.getElementById('toast-msg');
+
+const btnAttach = document.getElementById('btn-attach');
+const fileInput = document.getElementById('file-input');
+
+// Group
+const btnAddMember = document.getElementById('btn-add-member');
+const addMemberPanel = document.getElementById('add-member-panel');
+const memberIdInput = document.getElementById('member-id-input');
+const confirmAddMemberBtn = document.getElementById('confirm-add-member-btn');
+const btnCloseAddMember = document.getElementById('btn-close-add-member');
+
+// Ping System
+let pingIntervalTimer = null;
+let typingTimeout = null;
+
+// ID Generation
+function generateMemorableId() {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let res = 'nx-';
+    for(let i=0; i<6; i++) res += chars.charAt(Math.floor(Math.random() * chars.length));
+    return res;
+}
+
+// History
+// iOS Safari (özel sekme, çerez engeli vb.) localStorage'da hata fırlatabilir; hiçbir akış buna takılmamalı
+const safeStorage = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } },
+    remove(k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+
+function loadHistory() {
+    const storedId = safeStorage.get('nexus_id');
+    if (storedId) myId = storedId;
+    else if (!myId) {
+        myId = generateMemorableId();
+        safeStorage.set('nexus_id', myId);
+    }
+    try {
+        const storedGroups = safeStorage.get('nexus_groups');
+        if (storedGroups) groups = JSON.parse(storedGroups);
+    } catch (e) { groups = {}; }
+}
+
+function saveHistory() {
+    safeStorage.set('nexus_groups', JSON.stringify(groups));
+}
+
+// iOS/Safari Detection
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+const isIOSSafari = isIOS || isSafari;
+
+// Init
+let reconnectTimer = null;
+let openWatchdog = null;
+let peerRetryCount = 0;
+let idConflictRetries = 0;
+let cryptoReady = false;
+
+const ICE_SERVERS = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    // Free TURN servers for relay (critical for iPhones behind carrier NAT)
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turns:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+];
+
+function setIdLabel(text, state) {
+    myPeerIdEl.textContent = text;
+    myPeerIdEl.classList.toggle('gradient-text', state !== 'error');
+    myPeerIdEl.classList.toggle('text-rose-400', state === 'error');
+}
+
+function nextBackoff() {
+    peerRetryCount++;
+    return Math.min(2000 * peerRetryCount, 15000);
+}
+
+function scheduleRecreate(delay) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(createPeer, delay);
+}
+
+function scheduleReconnect() {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(() => {
+        if (!peer) return;
+        if (peer.destroyed) { createPeer(); return; }
+        if (peer.disconnected) {
+            try { peer.reconnect(); } catch (e) { createPeer(); }
+        }
+    }, nextBackoff());
+}
+
+async function initPeer() {
+    try {
+        loadHistory();
+        setIdLabel('Ağ Bekleniyor...');
+
+        if (typeof Peer === 'undefined') {
+            setIdLabel('PeerJS yüklenemedi', 'error');
+            showToast('PeerJS yüklenemedi. İnternetinizi kontrol edip sayfayı yenileyin.');
+            return;
+        }
+
+        try {
+            await CryptoEngine.init();
+            cryptoReady = true;
+        } catch (e) {
+            // crypto.subtle yalnızca HTTPS (güvenli bağlam) altında vardır
+            cryptoReady = false;
+            console.error('WebCrypto başlatılamadı:', e);
+            showToast('⚠️ Uçtan uca şifreleme devre dışı: siteyi HTTPS üzerinden açın.');
+        }
+
+        createPeer();
+    } catch (e) {
+        console.error('initPeer hatası:', e);
+        setIdLabel('Başlatma hatası', 'error');
+        showToast('Başlatma hatası: ' + (e && e.message ? e.message : e));
+    }
+}
+
+function createPeer() {
+    clearTimeout(openWatchdog);
+    clearTimeout(reconnectTimer);
+    if (peer && !peer.destroyed) { try { peer.destroy(); } catch (e) {} }
+
+    let thisPeer;
+    try {
+        thisPeer = new Peer(myId, {
+            debug: 1,
+            config: {
+                iceServers: ICE_SERVERS,
+                iceCandidatePoolSize: 10,
+                iceTransportPolicy: 'all'
+            }
+        });
+    } catch (e) {
+        console.error('Peer oluşturulamadı:', e);
+        setIdLabel('Tarayıcı desteklemiyor', 'error');
+        return;
+    }
+    peer = thisPeer;
+
+    // Sinyal sunucusuna hiç ulaşılamazsa "Ağ Bekleniyor..." sonsuza kadar kalmasın
+    openWatchdog = setTimeout(() => {
+        if (thisPeer === peer && !thisPeer.open) {
+            setIdLabel('Sunucuya ulaşılamıyor...', 'error');
+            showToast('Sinyal sunucusuna bağlanılamadı, tekrar deneniyor...');
+            scheduleRecreate(nextBackoff());
+        }
+    }, 15000);
+
+    thisPeer.on('open', (id) => {
+        clearTimeout(openWatchdog);
+        peerRetryCount = 0;
+        idConflictRetries = 0;
+        myId = id;
+        setIdLabel(id);                       // önce arayüz...
+        safeStorage.set('nexus_id', myId);    // ...sonra depolama (hata verse de ID görünür)
+        showToast('Nexus Ağına Bağlanıldı.');
+        renderChatList();
+        connectToGroupMembers();
+        startPingSystem();
+    });
+
+    thisPeer.on('disconnected', () => {
+        if (thisPeer !== peer || thisPeer.destroyed) return;
+        setIdLabel('Ağ Bekleniyor...');
+        scheduleReconnect();
+    });
+
+    thisPeer.on('connection', (conn) => {
+        setupConnection(conn, false);
+    });
+
+    thisPeer.on('error', (err) => {
+        console.error('Peer error:', err);
+        if (thisPeer !== peer) return;
+        switch (err.type) {
+            case 'unavailable-id':
+                // Eski oturumun kaydı sunucuda birkaç saniye asılı kalabilir: önce aynı kimlikle tekrar dene
+                if (idConflictRetries < 5) {
+                    idConflictRetries++;
+                    setIdLabel('Ağ Bekleniyor...');
+                    scheduleRecreate(4000);
+                } else {
+                    idConflictRetries = 0;
+                    myId = generateMemorableId();
+                    safeStorage.set('nexus_id', myId);
+                    showToast('Kimlik çakışması, yeni kimlik oluşturuldu.');
+                    scheduleRecreate(500);
+                }
+                return;
+            case 'peer-unavailable':
+                showToast('Düğüm bulunamadı veya çevrimdışı.');
+                return;
+            case 'browser-incompatible':
+                setIdLabel('Tarayıcı desteklemiyor', 'error');
+                return;
+            case 'network':
+            case 'server-error':
+            case 'socket-error':
+            case 'socket-closed':
+                setIdLabel('Sunucuya ulaşılamıyor...', 'error');
+                scheduleRecreate(nextBackoff());
+                return;
+        }
+    });
+
+    // Call Handling
+    thisPeer.on('call', (call) => {
+        isVideoCall = call.metadata && call.metadata.type === 'video';
+        document.getElementById('caller-id-display').textContent = call.peer;
+        incomingCallModal.classList.remove('hidden');
+
+        document.getElementById('btn-accept-call').onclick = async () => {
+            incomingCallModal.classList.add('hidden');
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: isVideoCall, audio: true });
+                if (isVideoCall) {
+                    localVideo.srcObject = localStream;
+                    localVideo.classList.remove('hidden');
+                } else {
+                    localVideo.classList.add('hidden');
+                }
+                call.answer(localStream);
+                currentCall = call;
+                callModal.classList.remove('hidden');
+                document.getElementById('call-status').textContent = "BAĞLANTI KURULDU";
+                document.getElementById('call-status').classList.remove('animate-pulse');
+                document.getElementById('call-status').classList.add('text-emerald-400');
+                setupCallEventHandlers(call);
+            } catch (err) {
+                showToast("Medya donanımına erişilemedi.");
+                call.close();
+            }
+        };
+
+        document.getElementById('btn-reject-call').onclick = () => {
+            incomingCallModal.classList.add('hidden');
+            call.close();
+        };
+    });
+}
+
+// iOS Safari arka plana atılan sayfanın WebSocket'ini öldürür: öne gelince yeniden bağlan
+function ensureOnline() {
+    if (document.visibilityState === 'hidden' || !peer) return;
+    if (peer.destroyed) scheduleRecreate(300);
+    else if (peer.disconnected) { try { peer.reconnect(); } catch (e) { scheduleRecreate(300); } }
+}
+document.addEventListener('visibilitychange', ensureOnline);
+window.addEventListener('pageshow', (e) => { if (e.persisted) ensureOnline(); });
+window.addEventListener('online', ensureOnline);
+
+function startPingSystem() {
+    if(pingIntervalTimer) clearInterval(pingIntervalTimer);
+    pingIntervalTimer = setInterval(() => {
+        Object.keys(peers).forEach(id => {
+            const p = peers[id];
+            if (p.conn && p.conn.open) {
+                p.conn.send({ type: 'ping', time: Date.now() });
+            }
+        });
+    }, 3000);
+}
+
+function connectToGroupMembers() {
+    for (let groupId in groups) {
+        groups[groupId].members.forEach(memberId => {
+            if (memberId !== myId) ensureConnection(memberId);
+        });
+    }
+}
+
+function ensureConnection(peerId) {
+    if (peerId === myId) return;
+    if (peers[peerId] && peers[peerId].conn && peers[peerId].conn.open) return;
+    const conn = peer.connect(peerId, { serialization: 'json', reliable: true });
+    setupConnection(conn, true, true); 
+}
+
+function connectToPeer(id) {
+    if (!id || id === myId) return;
+    
+    if (!peers[id]) peers[id] = { conn: null, name: id, messages: [], lastPing: null, isTyping: false, sharedKey: null, e2ee: false };
+    
+    openChat(id, false);
+    newConnectionPanel.classList.add('hidden');
+    peerIdInput.value = '';
+
+    if (peers[id].conn && peers[id].conn.open) return;
+    
+    updateActiveChatStatus();
+    const conn = peer.connect(id, { serialization: 'json', reliable: true });
+    setupConnection(conn, true);
+}
+
+// Connection retry tracking
+const connectionRetries = {};
+const MAX_RETRIES = 3;
+const RETRY_DELAY_BASE = 2000; // ms
+
+function setupConnection(conn, isInitiator, isSilent = false) {
+    const peerId = conn.peer;
+    if (!peers[peerId]) peers[peerId] = { conn: conn, name: peerId, messages: [], lastPing: null, isTyping: false, sharedKey: null, e2ee: false };
+    else { peers[peerId].conn = conn; peers[peerId].sharedKey = null; peers[peerId].e2ee = false; }
+    
+    if (activePeerId === peerId && !isGroupActive) updateActiveChatStatus();
+
+    conn.on('open', async () => {
+        if (!isSilent) {
+            showToast(`Düğüm bağlandı: ${peerId}`);
+            renderChatList();
+        }
+        // Send our public key for E2EE handshake
+        try {
+            const pubKey = await CryptoEngine.exportPublicKey();
+            conn.send({ type: 'e2ee-key', publicKey: pubKey });
+        } catch(e) { console.error('Key export failed', e); }
+        if (activePeerId === peerId && !isGroupActive) updateActiveChatStatus();
+    });
+
+    conn.on('data', (data) => {
+        handleIncomingData(peerId, data);
+    });
+
+    conn.on('close', () => handlePeerDisconnect(peerId));
+    conn.on('error', () => handlePeerDisconnect(peerId));
+}
+
+async function handleIncomingData(senderId, data) {
+    if (!data.type) data.type = 'chat';
+
+    // E2EE Key Exchange
+    if (data.type === 'e2ee-key') {
+        try {
+            const sharedKey = await CryptoEngine.deriveSharedKey(data.publicKey);
+            if (peers[senderId]) {
+                peers[senderId].sharedKey = sharedKey;
+                peers[senderId].e2ee = true;
+                showToast(`🔐 ${senderId} ile E2EE aktif`);
+                if (activePeerId === senderId && !isGroupActive) updateActiveChatStatus();
+            }
+        } catch(e) { console.error('Key derivation failed', e); }
+        return;
+    }
+
+    if (data.type === 'ping') {
+        if (peers[senderId] && peers[senderId].conn && peers[senderId].conn.open) {
+            peers[senderId].conn.send({ type: 'pong', time: data.time });
+        }
+        return;
+    }
+    if (data.type === 'pong') {
+        const ping = Date.now() - data.time;
+        if(peers[senderId]) peers[senderId].lastPing = ping;
+        if (activePeerId === senderId && !isGroupActive) updatePingDisplay(ping);
+        return;
+    }
+    if (data.type === 'typing') {
+        if(peers[senderId]) {
+            peers[senderId].isTyping = data.isTyping;
+            if (activePeerId === senderId && !isGroupActive) updateActiveChatStatus();
+        }
+        return;
+    }
+
+    // Decrypt encrypted messages
+    if (data.type === 'encrypted-chat') {
+        if (!peers[senderId] || !peers[senderId].sharedKey) return;
+        try {
+            const text = await CryptoEngine.decrypt(peers[senderId].sharedKey, data.payload);
+            peers[senderId].messages.push({ sender: 'them', text, time: data.time, encrypted: true });
+        } catch(e) { peers[senderId].messages.push({ sender: 'them', text: '⚠️ Şifre çözülemedi', time: data.time }); }
+        if (activePeerId === senderId && !isGroupActive) { renderMessages(); scrollToBottom(); }
+        else { showToast(`🔐 Gelen Veri: ${senderId}`); }
+        renderChatList();
+        return;
+    }
+
+    if (data.type === 'encrypted-file') {
+        if (!peers[senderId] || !peers[senderId].sharedKey) return;
+        try {
+            const fileData = await CryptoEngine.decryptBlob(peers[senderId].sharedKey, data.payload);
+            peers[senderId].messages.push({ type: 'file', sender: 'them', fileName: data.fileName, fileType: data.fileType, fileData, time: data.time, encrypted: true });
+        } catch(e) { peers[senderId].messages.push({ sender: 'them', text: '⚠️ Dosya şifresi çözülemedi', time: data.time }); }
+        if (activePeerId === senderId && !isGroupActive) { renderMessages(); scrollToBottom(); }
+        else { showToast(`🔐 Dosya Alındı: ${senderId}`); }
+        renderChatList();
+        return;
+    }
+
+    // Fallback: unencrypted messages (legacy/group)
+    if (data.type === 'chat') {
+        if (!peers[senderId]) return;
+        peers[senderId].messages.push({ sender: 'them', text: data.text, time: data.time, encrypted: false });
+        if (activePeerId === senderId && !isGroupActive) { renderMessages(); scrollToBottom(); }
+        else { showToast(`Gelen Veri: ${senderId}`); }
+        renderChatList();
+    } else if (data.type === 'file') {
+        if (!peers[senderId]) return;
+        peers[senderId].messages.push({ type: 'file', sender: 'them', fileName: data.fileName, fileType: data.fileType, fileData: data.fileData, time: data.time, encrypted: false });
+        if (activePeerId === senderId && !isGroupActive) { renderMessages(); scrollToBottom(); }
+        else { showToast(`Dosya Alındı: ${senderId}`); }
+        renderChatList();
+    } else if (data.type === 'group-invite') {
+        if (!groups[data.groupId]) {
+            groups[data.groupId] = { name: data.groupName, members: data.members, messages: [], isHost: false };
+            saveHistory();
+            showToast(`Ağa eklendiniz: ${data.groupName}`);
+            renderChatList();
+            connectToGroupMembers();
+        } else {
+            data.members.forEach(m => {
+                if(!groups[data.groupId].members.includes(m)) groups[data.groupId].members.push(m);
+            });
+            saveHistory();
+        }
+    } else if (data.type === 'group-message') {
+        if (groups[data.groupId]) {
+            groups[data.groupId].messages.push({ senderId: data.senderId, text: data.text, time: data.time });
+            saveHistory(); 
+            if (activePeerId === data.groupId && isGroupActive) { renderMessages(); scrollToBottom(); }
+            else { showToast(`Ağ İletisi (${groups[data.groupId].name})`); }
+            renderChatList();
+        }
+    }
+}
+
+function handlePeerDisconnect(peerId) {
+    if (peers[peerId]) {
+        peers[peerId].conn = null;
+        peers[peerId].lastPing = null;
+        renderChatList();
+        if (activePeerId === peerId && !isGroupActive) updateActiveChatStatus();
+    }
+}
+
+function updatePingDisplay(ping) {
+    pingIndicator.classList.remove('hidden');
+    pingIndicator.textContent = `Ping: ${ping}ms`;
+    if(ping < 50) pingIndicator.className = 'text-[10px] font-mono bg-black/40 px-2 py-0.5 rounded-full border border-white/10 text-emerald-400';
+    else if(ping < 150) pingIndicator.className = 'text-[10px] font-mono bg-black/40 px-2 py-0.5 rounded-full border border-white/10 text-yellow-400';
+    else pingIndicator.className = 'text-[10px] font-mono bg-black/40 px-2 py-0.5 rounded-full border border-white/10 text-rose-400';
+}
+
+function updateActiveChatStatus() {
+    if (!activePeerId) return;
+
+    const btnVideoCall = document.getElementById('btn-video-call');
+    const btnAudioCall = document.getElementById('btn-audio-call');
+
+    if (isGroupActive) {
+        if(btnVideoCall) btnVideoCall.classList.add('hidden');
+        if(btnAudioCall) btnAudioCall.classList.add('hidden');
+        pingIndicator.classList.add('hidden');
+        
+        chatStatusIndicator.innerHTML = `<span class="w-2 h-2 rounded-full bg-purple-400 inline-block shadow-[0_0_8px_#c084fc]"></span> <span class="text-purple-300">Merkeziyetsiz Ağ (${groups[activePeerId].members.length} Düğüm)</span>`;
+        btnDisconnect.classList.add('hidden');
+        btnAddMember.classList.remove('hidden');
+    } else {
+        if(btnVideoCall) btnVideoCall.classList.remove('hidden');
+        if(btnAudioCall) btnAudioCall.classList.remove('hidden');
+        btnAddMember.classList.add('hidden');
+        
+        const p = peers[activePeerId];
+        
+        if (p && p.conn && p.conn.open) {
+            if(p.isTyping) {
+                chatStatusIndicator.innerHTML = `
+                    <div class="flex items-center gap-1 text-nexus-accent1 font-medium">
+                        <span class="typing-dot w-1.5 h-1.5 bg-nexus-accent1 rounded-full inline-block"></span>
+                        <span class="typing-dot w-1.5 h-1.5 bg-nexus-accent1 rounded-full inline-block"></span>
+                        <span class="typing-dot w-1.5 h-1.5 bg-nexus-accent1 rounded-full inline-block"></span>
+                        <span class="ml-1">Yazıyor...</span>
+                    </div>`;
+            } else {
+                const e2eeLabel = p.e2ee 
+                    ? '<i data-lucide="shield-check" class="w-3 h-3 text-emerald-400 inline-block"></i> <span class="text-emerald-400 font-medium">AES-256-GCM Şifreli</span>'
+                    : '<span class="text-yellow-400 font-medium">⚠ Şifreleme Bekleniyor</span>';
+                chatStatusIndicator.innerHTML = `<span class="w-2 h-2 rounded-full ${p.e2ee ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-yellow-400 animate-pulse'} inline-block"></span> ${e2eeLabel}`;
+            }
+            btnDisconnect.classList.remove('hidden');
+            if(p.lastPing !== null) updatePingDisplay(p.lastPing);
+        } else if (p && p.conn && !p.conn.open) {
+            chatStatusIndicator.innerHTML = `<span class="w-2 h-2 rounded-full bg-yellow-400 inline-block animate-pulse shadow-[0_0_8px_#facc15]"></span> <span class="text-yellow-400">Bağlantı Kuruluyor...</span>`;
+            btnDisconnect.classList.add('hidden');
+            pingIndicator.classList.add('hidden');
+        } else {
+            chatStatusIndicator.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500 inline-block"></span> <span class="text-rose-400">Düğüm Çevrimdışı</span>`;
+            btnDisconnect.classList.add('hidden');
+            pingIndicator.classList.add('hidden');
+        }
+    }
+}
+
+// UI
+function renderChatList(filter = '') {
+    chatListEl.innerHTML = '';
+    
+    let allChats = [];
+    Object.keys(groups).forEach(id => { allChats.push({ id, isGroup: true, data: groups[id] }); });
+    Object.keys(peers).forEach(id => {
+        if (peers[id].messages.length > 0 || peers[id].conn?.open) allChats.push({ id, isGroup: false, data: peers[id] });
+    });
+
+    if (allChats.length === 0) {
+        chatListEl.innerHTML = `
+            <div class="flex flex-col items-center justify-center h-full text-nexus-textMuted p-8 text-center space-y-5">
+                <div class="relative w-20 h-20 flex items-center justify-center">
+                    <div class="absolute inset-0 border-2 border-nexus-accent1 rounded-full opacity-20 animate-ping-slow"></div>
+                    <div class="absolute inset-2 border-2 border-nexus-accent2 rounded-full opacity-40 animate-pulse"></div>
+                    <i data-lucide="fingerprint" class="w-8 h-8 text-nexus-accent1 relative z-10"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-white mb-2">Ağ Boş</p>
+                    <p class="text-xs leading-relaxed">Kimliğinizi paylaşın veya bir kimliğe bağlanarak güvenli veri aktarımına başlayın.</p>
+                </div>
+                <div class="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-full font-semibold">
+                    Sunucu Kaydı Yok
+                </div>
+            </div>`;
+        lucide.createIcons();
+        return;
+    }
+
+    allChats.sort((a, b) => {
+        const timeA = a.data.messages.length ? a.data.messages[a.data.messages.length - 1].time : 0;
+        const timeB = b.data.messages.length ? b.data.messages[b.data.messages.length - 1].time : 0;
+        return timeB - timeA;
+    });
+
+    allChats.forEach(chat => {
+        if (filter && !chat.data.name.toLowerCase().includes(filter.toLowerCase()) && !chat.id.includes(filter)) return;
+
+        const lastMsgObj = chat.data.messages[chat.data.messages.length - 1];
+        let lastMsg = 'Veri akışı başladı';
+        if (lastMsgObj) {
+            if (lastMsgObj.type === 'file') lastMsg = '📦 Şifreli Dosya';
+            else lastMsg = lastMsgObj.text;
+        }
+
+        let isOnline = false;
+        let avatarIcon = '';
+        if (!chat.isGroup) {
+            isOnline = chat.data.conn && chat.data.conn.open;
+            avatarIcon = `<i data-lucide="user" class="w-5 h-5 text-white/70"></i>`;
+        } else {
+            avatarIcon = `<i data-lucide="network" class="w-5 h-5 text-purple-400"></i>`;
+            isOnline = true;
+        }
+
+        const onlineClass = (isOnline && !chat.isGroup) ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-transparent';
+        const itemBg = (activePeerId === chat.id) ? 'bg-white/10 border-l-2 border-nexus-accent1' : 'hover:bg-white/5 border-l-2 border-transparent';
+
+        const item = document.createElement('div');
+        item.className = `flex items-center gap-4 px-5 py-4 cursor-pointer transition-all border-b border-nexus-border ${itemBg}`;
+        item.onclick = () => openChat(chat.id, chat.isGroup);
+
+        item.innerHTML = `
+            <div class="relative w-12 h-12 rounded-full glass flex items-center justify-center shrink-0">
+                ${avatarIcon}
+                <div class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#0f172a] ${onlineClass}"></div>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-white font-semibold text-sm truncate">${chat.data.name}</span>
+                </div>
+                <div class="text-[13px] text-nexus-textMuted truncate flex items-center gap-1.5 font-light">
+                    ${chat.data.isTyping ? '<span class="text-nexus-accent1">Yazıyor...</span>' : lastMsg}
+                </div>
+            </div>
+        `;
+        chatListEl.appendChild(item);
+    });
+    lucide.createIcons();
+}
+
+function openChat(id, isGrp) {
+    activePeerId = id;
+    isGroupActive = isGrp;
+    
+    if (isGrp) activeChatName.textContent = groups[id].name;
+    else activeChatName.textContent = peers[id].name;
+    
+    emptyState.classList.add('hidden');
+    activeChatHeader.classList.remove('hidden');
+    messagesContainer.classList.remove('hidden');
+    activeChatFooter.classList.remove('hidden');
+    
+    if(window.innerWidth < 768) {
+        document.getElementById('sidebar').classList.add('hidden');
+        mainChat.classList.remove('hidden');
+        mainChat.classList.add('flex'); // 'hidden' kalkınca display:block'a düşüp footer'ı taşırıyordu
+    }
+
+    addMemberPanel.classList.add('hidden');
+    updateActiveChatStatus();
+    renderMessages();
+    renderChatList();
+    scrollToBottom();
+}
+
+function closeChat() {
+    activePeerId = null;
+    isGroupActive = false;
+    emptyState.classList.remove('hidden');
+    activeChatHeader.classList.add('hidden');
+    messagesContainer.classList.add('hidden');
+    activeChatFooter.classList.add('hidden');
+    addMemberPanel.classList.add('hidden');
+    
+    if(window.innerWidth < 768) {
+        document.getElementById('sidebar').classList.remove('hidden');
+        mainChat.classList.add('hidden');
+        mainChat.classList.remove('flex');
+    }
+    renderChatList();
+}
+
+function renderMessages() {
+    messagesList.innerHTML = '';
+    if (!activePeerId) return;
+
+    let messages = isGroupActive ? groups[activePeerId].messages : peers[activePeerId].messages;
+    
+    messages.forEach((msg) => {
+        let isMe = false;
+        let senderName = '';
+        if (isGroupActive) {
+            isMe = msg.senderId === myId;
+            senderName = isMe ? 'Sen' : msg.senderId;
+        } else {
+            isMe = msg.sender === 'me';
+        }
+
+        const msgEl = document.createElement('div');
+        msgEl.className = `flex ${isMe ? 'justify-end' : 'justify-start'} animate-slide-up`;
+        
+        const tailClass = isMe ? 'msg-out' : 'msg-in';
+
+        let nameHtml = '';
+        if (isGroupActive && !isMe) {
+            nameHtml = `<div class="text-[10px] font-bold text-purple-300 mb-1 tracking-wider uppercase">${senderName}</div>`;
+        }
+
+        let contentHtml = '';
+        if (msg.type === 'file') {
+            if (msg.fileType && msg.fileType.startsWith('image/')) {
+                contentHtml = `<img src="${msg.fileData}" class="max-w-xs rounded-xl cursor-pointer shadow-lg hover:opacity-90 transition-opacity" onclick="window.open('${msg.fileData}')">`;
+            } else {
+                contentHtml = `<div class="flex items-center gap-3 bg-black/20 p-3 rounded-xl border border-white/10 hover:bg-black/30 transition-colors cursor-pointer" onclick="window.open('${msg.fileData}')">
+                    <i data-lucide="file-archive" class="w-8 h-8 shrink-0 opacity-80"></i>
+                    <div class="text-sm font-medium break-all underline decoration-white/30 underline-offset-2">${msg.fileName}</div>
+                </div>`;
+            }
+        } else {
+            contentHtml = `<div class="text-[15px] leading-relaxed break-words font-medium">${escapeHTML(msg.text)}</div>`;
+        }
+
+        const encIcon = msg.encrypted 
+            ? '<i data-lucide="lock" class="w-2.5 h-2.5 text-emerald-400"></i>' 
+            : (isGroupActive ? '' : '<i data-lucide="lock-open" class="w-2.5 h-2.5 text-yellow-500 opacity-50"></i>');
+
+        msgEl.innerHTML = `
+            <div class="max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-2.5 relative ${tailClass}">
+                ${nameHtml}
+                ${contentHtml}
+                <div class="text-[9px] font-mono opacity-60 text-right mt-1.5 -mb-0.5 tracking-widest flex justify-end items-center gap-1">
+                    ${encIcon}
+                    ${formatTime(msg.time)}
+                    ${isMe ? '<i data-lucide="check-check" class="w-3 h-3"></i>' : ''}
+                </div>
+            </div>
+        `;
+        messagesList.appendChild(msgEl);
+    });
+    lucide.createIcons();
+}
+
+function scrollToBottom() {
+    const el = messagesContainer;
+    el.scrollTop = el.scrollHeight;
+    requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+}
+
+async function sendMessage() {
+    const text = messageInput.value.trim();
+    if (!text || !activePeerId) return;
+    const time = Date.now();
+
+    if (isGroupActive) {
+        const grp = groups[activePeerId];
+        grp.messages.push({ senderId: myId, text, time });
+        saveHistory();
+        grp.members.forEach(id => {
+            if (id !== myId) {
+                ensureConnection(id);
+                setTimeout(() => {
+                    if (peers[id] && peers[id].conn && peers[id].conn.open) {
+                        peers[id].conn.send({ type: 'group-message', groupId: activePeerId, text, time, senderId: myId });
+                    }
+                }, 100);
+            }
+        });
+    } else {
+        if (!peers[activePeerId] || !peers[activePeerId].conn || !peers[activePeerId].conn.open) {
+            showToast('Bağlantı kapalı. Hedef ağda bulunamadı.');
+            return;
+        }
+        const p = peers[activePeerId];
+        p.messages.push({ sender: 'me', text, time, encrypted: !!p.sharedKey });
+        if (p.sharedKey) {
+            const payload = await CryptoEngine.encrypt(p.sharedKey, text);
+            p.conn.send({ type: 'encrypted-chat', payload, time });
+        } else {
+            p.conn.send({ type: 'chat', text, time });
+        }
+    }
+
+    messageInput.value = '';
+    messageInput.style.height = 'auto';
+    handleTyping(false);
+    renderMessages();
+    renderChatList();
+    scrollToBottom();
+}
+
+// Utilities
+function formatTime(timestamp) {
+    const d = new Date(timestamp);
+    return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+}
+function escapeHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+function showToast(msg) {
+    toastMsg.textContent = msg;
+    toast.classList.remove('opacity-0');
+    toast.classList.remove('translate-y-[-20px]');
+    setTimeout(() => { 
+        toast.classList.add('opacity-0'); 
+        toast.classList.add('translate-y-[-20px]'); 
+    }, 3000);
+}
+
+// Typing Indicator logic
+function handleTyping(isTyping) {
+    if(isGroupActive || !activePeerId || !peers[activePeerId]?.conn?.open) return;
+    peers[activePeerId].conn.send({ type: 'typing', isTyping });
+}
+
+messageInput.addEventListener('input', function() {
+    this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';
+    handleTyping(true);
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => handleTyping(false), 2000);
+});
+
+
+// Events
+copyMyIdBtn.addEventListener('click', async () => {
+    if (!peer) return;
+    if (!peer.open) { showToast('Ağa bağlanılıyor, yeniden deneniyor...'); scheduleRecreate(0); return; }
+    try {
+        await navigator.clipboard.writeText(myId);
+    } catch (e) { // HTTP / eski iOS: panoya yazma API'si yok
+        const ta = document.createElement('textarea');
+        ta.value = myId; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length);
+        try { document.execCommand('copy'); } catch (_) {}
+        ta.remove();
+    }
+    showToast('Kimlik Kopyalandı');
+});
+
+btnMenu.addEventListener('click', (e) => {
+    e.stopPropagation();
+    menuDropdown.classList.toggle('hidden');
+});
+document.addEventListener('click', (e) => {
+    if (!btnMenu.contains(e.target) && !menuDropdown.contains(e.target)) menuDropdown.classList.add('hidden');
+});
+btnClearHistory.addEventListener('click', () => {
+    if (confirm('Tüm ağ yapılandırması silinecek. Emin misiniz?')) {
+        groups = {}; saveHistory(); renderChatList(); closeChat(); showToast('Veriler imha edildi.'); menuDropdown.classList.add('hidden');
+    }
+});
+btnResetId.addEventListener('click', () => {
+    if (confirm('Yeni bir kriptografik kimlik oluşturulacak. Devam edilsin mi?')) {
+        safeStorage.remove('nexus_id'); window.location.reload();
+    }
+});
+
+btnNewChat.addEventListener('click', () => {
+    newGroupPanel.classList.add('hidden');
+    newConnectionPanel.classList.toggle('hidden');
+    if(!newConnectionPanel.classList.contains('hidden')) peerIdInput.focus();
+});
+btnNewGroup.addEventListener('click', () => {
+    newConnectionPanel.classList.add('hidden');
+    newGroupPanel.classList.toggle('hidden');
+    if(!newGroupPanel.classList.contains('hidden')) groupNameInput.focus();
+});
+
+connectBtn.addEventListener('click', () => connectToPeer(peerIdInput.value.trim()));
+peerIdInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') connectToPeer(peerIdInput.value.trim()); });
+
+createGroupBtn.addEventListener('click', () => {
+    const name = groupNameInput.value.trim();
+    if (!name) return;
+    const groupId = `G-${Date.now()}`;
+    groups[groupId] = { name: name, members: [myId], messages: [], isHost: true };
+    saveHistory(); showToast(`Ağ oluşturuldu: ${name}`);
+    newGroupPanel.classList.add('hidden'); groupNameInput.value = '';
+    renderChatList(); openChat(groupId, true);
+});
+
+btnAddMember.addEventListener('click', () => { addMemberPanel.classList.toggle('hidden'); });
+btnCloseAddMember.addEventListener('click', () => addMemberPanel.classList.add('hidden'));
+confirmAddMemberBtn.addEventListener('click', () => {
+    const memberId = memberIdInput.value.trim();
+    if (!memberId || memberId === myId || !groups[activePeerId]) return;
+    const grp = groups[activePeerId];
+    if (!grp.members.includes(memberId)) { grp.members.push(memberId); saveHistory(); }
+    grp.members.forEach(id => {
+        if (id !== myId) {
+            ensureConnection(id);
+            setTimeout(() => {
+                if (peers[id] && peers[id].conn && peers[id].conn.open) {
+                    peers[id].conn.send({ type: 'group-invite', groupId: activePeerId, groupName: grp.name, members: grp.members });
+                }
+            }, 1000);
+        }
+    });
+    showToast(`${memberId} ağa katıldı.`);
+    memberIdInput.value = ''; addMemberPanel.classList.add('hidden'); updateActiveChatStatus();
+});
+
+btnBack.addEventListener('click', closeChat);
+
+btnDisconnect.addEventListener('click', () => {
+    if (!isGroupActive && activePeerId && peers[activePeerId] && peers[activePeerId].conn) {
+        peers[activePeerId].conn.close();
+        handlePeerDisconnect(activePeerId);
+    }
+});
+
+btnSend.addEventListener('click', sendMessage);
+messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+searchInput.addEventListener('input', (e) => renderChatList(e.target.value));
+
+fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { showToast('Dosya limiti: 2MB'); return; }
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+        const fileData = ev.target.result;
+        const time = Date.now();
+        if (isGroupActive) {
+            const grp = groups[activePeerId];
+            grp.messages.push({ type: 'file', senderId: myId, fileName: file.name, fileType: file.type, fileData, time });
+            try { saveHistory(); } catch (e) { showToast('Depolama dolu!'); grp.messages.pop(); return; }
+            grp.members.forEach(id => {
+                if (id !== myId) {
+                    ensureConnection(id);
+                    setTimeout(() => {
+                        if (peers[id] && peers[id].conn && peers[id].conn.open) {
+                            peers[id].conn.send({ type: 'group-file', groupId: activePeerId, fileName: file.name, fileType: file.type, fileData, time, senderId: myId });
+                        }
+                    }, 100);
+                }
+            });
+        } else {
+            if (!peers[activePeerId]?.conn?.open) return showToast('Bağlantı kapalı.');
+            const p = peers[activePeerId];
+            p.messages.push({ type: 'file', sender: 'me', fileName: file.name, fileType: file.type, fileData, time, encrypted: !!p.sharedKey });
+            if (p.sharedKey) {
+                const payload = await CryptoEngine.encryptBlob(p.sharedKey, fileData);
+                p.conn.send({ type: 'encrypted-file', payload, fileName: file.name, fileType: file.type, time });
+            } else {
+                p.conn.send({ type: 'file', fileName: file.name, fileType: file.type, fileData, time });
+            }
+        }
+        renderMessages(); renderChatList(); scrollToBottom();
+    };
+    reader.readAsDataURL(file);
+    fileInput.value = '';
+});
+
+// CALLING LOGIC
+let currentCall = null;
+let localStream = null;
+let isVideoCall = false;
+
+const callModal = document.getElementById('call-modal');
+const incomingCallModal = document.getElementById('incoming-call-modal');
+const remoteVideo = document.getElementById('remote-video');
+const localVideo = document.getElementById('local-video');
+const remoteAudio = document.getElementById('remote-audio');
+
+async function startCall(isVid) {
+    if (isGroupActive || !activePeerId) return;
+    if (!peers[activePeerId]?.conn?.open) return showToast("Düğüm çevrimdışı.");
+    
+    isVideoCall = isVid;
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: isVid, audio: true });
+        if (isVid) { localVideo.srcObject = localStream; localVideo.classList.remove('hidden'); } 
+        else { localVideo.classList.add('hidden'); }
+        
+        callModal.classList.remove('hidden');
+        document.getElementById('call-status').textContent = "SİNYAL GÖNDERİLİYOR...";
+        document.getElementById('call-status').classList.add('animate-pulse');
+        document.getElementById('call-status').classList.remove('text-emerald-400');
+        
+        currentCall = peer.call(activePeerId, localStream, { metadata: { type: isVid ? 'video' : 'audio' } });
+        setupCallEventHandlers(currentCall);
+    } catch (err) { showToast("Medya hatası!"); }
+}
+
+document.getElementById('btn-video-call').addEventListener('click', () => startCall(true));
+document.getElementById('btn-audio-call').addEventListener('click', () => startCall(false));
+
+function setupCallEventHandlers(call) {
+    call.on('stream', (remoteStream) => {
+        document.getElementById('call-status').textContent = "BAĞLANTI KURULDU";
+        document.getElementById('call-status').classList.remove('animate-pulse');
+        document.getElementById('call-status').classList.add('text-emerald-400');
+        
+        if (isVideoCall) { remoteVideo.srcObject = remoteStream; remoteVideo.classList.remove('hidden'); remoteAudio.srcObject = null; } 
+        else { remoteVideo.classList.add('hidden'); remoteAudio.srcObject = remoteStream; }
+    });
+    call.on('close', () => { endCurrentCall(); showToast("Bağlantı kesildi."); });
+    call.on('error', () => { endCurrentCall(); showToast("Ağ hatası."); });
+}
+
+function endCurrentCall() {
+    if (currentCall) { currentCall.close(); currentCall = null; }
+    if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+    callModal.classList.add('hidden');
+    incomingCallModal.classList.add('hidden');
+    remoteVideo.srcObject = null;
+    localVideo.srcObject = null;
+    remoteAudio.srcObject = null;
+}
+
+document.getElementById('btn-end-call').addEventListener('click', endCurrentCall);
+
+let isMicMuted = false;
+document.getElementById('btn-toggle-mic').addEventListener('click', (e) => {
+    if(localStream) {
+        const t = localStream.getAudioTracks()[0];
+        if (t) {
+            isMicMuted = !isMicMuted;
+            t.enabled = !isMicMuted;
+            e.currentTarget.innerHTML = isMicMuted ? '<i data-lucide="mic-off" class="w-7 h-7 text-rose-500"></i>' : '<i data-lucide="mic" class="w-7 h-7"></i>';
+            lucide.createIcons();
+        }
+    }
+});
+
+let isCamMuted = false;
+document.getElementById('btn-toggle-cam').addEventListener('click', (e) => {
+    if(localStream) {
+        const t = localStream.getVideoTracks()[0];
+        if (t) {
+            isCamMuted = !isCamMuted;
+            t.enabled = !isCamMuted;
+            e.currentTarget.innerHTML = isCamMuted ? '<i data-lucide="camera-off" class="w-7 h-7 text-rose-500"></i>' : '<i data-lucide="camera" class="w-7 h-7"></i>';
+            lucide.createIcons();
+        }
+    }
+});
+
+const deviceSelectionModal = document.getElementById('device-selection-modal');
+
+document.getElementById('btn-device-mobile').addEventListener('click', () => {
+    isMobileDevice = true;
+    deviceSelectionModal.classList.add('hidden');
+    applyDeviceSettings();
+    initPeer();
+});
+
+document.getElementById('btn-device-desktop').addEventListener('click', () => {
+    isMobileDevice = false;
+    deviceSelectionModal.classList.add('hidden');
+    applyDeviceSettings();
+    initPeer();
+});
+
+function applyDeviceSettings() {
+    if (isMobileDevice) {
+        document.body.classList.add('mobile-device');
+        document.getElementById('btn-attach').classList.remove('hidden');
+    } else {
+        document.body.classList.remove('mobile-device');
+        document.getElementById('btn-attach').classList.remove('hidden');
+    }
+}
+
+// Mobil cihazlarda klavye açılınca ekranın tam oturması için Visual Viewport API
+(function () {
+    const vv = window.visualViewport;
+    const root = document.documentElement;
+    function adjust(scrollDown) {
+        const h = vv ? vv.height : window.innerHeight;
+        const top = vv ? vv.offsetTop : 0;
+        document.body.style.height = h + 'px';
+        document.body.style.top = top + 'px';   // iOS klavye açılınca görünür alanı kaydırır; gövdeyi onunla hizala
+        root.classList.toggle('kbd-open', (window.innerHeight - h) > 120);
+        if (window.scrollY) window.scrollTo(0, 0);
+        if (scrollDown === true && activePeerId) scrollToBottom();
+    }
+    if (vv) {
+        vv.addEventListener('resize', () => adjust(true));
+        vv.addEventListener('scroll', () => adjust(false));
+    }
+    window.addEventListener('resize', () => adjust(true));
+    window.addEventListener('orientationchange', () => setTimeout(() => adjust(true), 300));
+    adjust(false);
+})();
+
+lucide.createIcons();
+    </script>
+</body>
+</html>
