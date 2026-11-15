@@ -379,6 +379,19 @@
         </div>
     </div>
 
+    <!-- Bağlantı Tanılama -->
+    <div id="diag-modal" class="hidden fixed inset-0 z-[400] bg-black/80 flex items-center justify-center p-4">
+        <div class="rounded-2xl w-full max-w-md max-h-full flex flex-col overflow-hidden border border-white/10" style="background:rgba(15,23,42,.98)">
+            <div class="px-4 py-3 border-b border-white/10 text-sm font-semibold gradient-text">Bağlantı Tanılama</div>
+            <pre id="diag-out" class="flex-1 min-h-0 overflow-auto p-4 text-[11px] leading-relaxed text-slate-200 whitespace-pre-wrap break-words font-mono"></pre>
+            <div class="flex gap-2 p-3 border-t border-white/10">
+                <button id="diag-retry" class="flex-1 bg-nexus-accent1 text-black rounded-xl py-2 text-sm font-bold">Yeniden dene</button>
+                <button id="diag-copy" class="flex-1 bg-white/10 text-white rounded-xl py-2 text-sm font-semibold">Kopyala</button>
+                <button id="diag-close" class="flex-1 bg-white/10 text-white rounded-xl py-2 text-sm font-semibold">Kapat</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Notification Toast -->
     <div id="toast" class="fixed top-6 left-1/2 transform -translate-x-1/2 glass-panel border-t border-nexus-accent1/50 text-white px-5 py-3 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] opacity-0 transition-all duration-300 pointer-events-none z-[100] flex items-center gap-3 translate-y-[-20px]">
         <i data-lucide="info" class="w-5 h-5 text-nexus-accent1"></i>
@@ -471,6 +484,24 @@
     </div>
 
     <script>
+const APP_BUILD = 'v3-ios-diag';
+const dbg = [];
+function dlog(msg) {
+    dbg.push(new Date().toLocaleTimeString() + ' ' + msg);
+    if (dbg.length > 80) dbg.shift();
+}
+window.addEventListener('error', (e) => {
+    if (e.target && e.target.tagName) dlog('Kaynak yüklenemedi: ' + (e.target.src || e.target.href));
+    else dlog('JS hatası: ' + e.message + ' (satır ' + e.lineno + ')');
+}, true);
+window.addEventListener('unhandledrejection', (e) => {
+    dlog('Promise hatası: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+});
+
+// İsteğe bağlı: kendi PeerServer'ınız varsa buraya yazın, örn.
+// { host: 'peer.siteniz.com', port: 443, path: '/', secure: true }
+const PEER_SERVER_OPTIONS = {};
+
 // ============================================
 // E2EE CRYPTO MODULE (ECDH + AES-256-GCM)
 // ============================================
@@ -625,6 +656,7 @@ let openWatchdog = null;
 let peerRetryCount = 0;
 let idConflictRetries = 0;
 let cryptoReady = false;
+let diagAutoShown = false;
 
 const ICE_SERVERS = [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -668,6 +700,7 @@ async function initPeer() {
     try {
         loadHistory();
         setIdLabel('Ağ Bekleniyor...');
+        dlog('init: güvenli=' + window.isSecureContext + ' Peer=' + (typeof Peer) + ' subtle=' + !!(window.crypto && crypto.subtle));
 
         if (typeof Peer === 'undefined') {
             setIdLabel('PeerJS yüklenemedi', 'error');
@@ -696,35 +729,42 @@ async function initPeer() {
 function createPeer() {
     clearTimeout(openWatchdog);
     clearTimeout(reconnectTimer);
-    if (peer && !peer.destroyed) { try { peer.destroy(); } catch (e) {} }
+    const oldPeer = peer;
+    peer = null; // eski peer'in olayları (destroy sırasında 'disconnected') arayüzü bozmasın
+    if (oldPeer && !oldPeer.destroyed) { try { oldPeer.destroy(); } catch (e) {} }
 
     let thisPeer;
     try {
-        thisPeer = new Peer(myId, {
+        thisPeer = new Peer(myId, Object.assign({
             debug: 1,
             config: {
                 iceServers: ICE_SERVERS,
                 iceCandidatePoolSize: 10,
                 iceTransportPolicy: 'all'
             }
-        });
+        }, PEER_SERVER_OPTIONS));
     } catch (e) {
+        dlog('new Peer hatası: ' + (e && e.message ? e.message : e));
         console.error('Peer oluşturulamadı:', e);
         setIdLabel('Tarayıcı desteklemiyor', 'error');
         return;
     }
     peer = thisPeer;
+    dlog('Peer oluşturuldu, id=' + myId);
 
     // Sinyal sunucusuna hiç ulaşılamazsa "Ağ Bekleniyor..." sonsuza kadar kalmasın
     openWatchdog = setTimeout(() => {
         if (thisPeer === peer && !thisPeer.open) {
+            dlog('15 sn içinde open olmadı');
             setIdLabel('Sunucuya ulaşılamıyor...', 'error');
+            if (!diagAutoShown) { diagAutoShown = true; openDiagnostics(); }
             showToast('Sinyal sunucusuna bağlanılamadı, tekrar deneniyor...');
             scheduleRecreate(nextBackoff());
         }
     }, 15000);
 
     thisPeer.on('open', (id) => {
+        dlog('open id=' + id);
         clearTimeout(openWatchdog);
         peerRetryCount = 0;
         idConflictRetries = 0;
@@ -737,8 +777,10 @@ function createPeer() {
         startPingSystem();
     });
 
+    thisPeer.on('close', () => dlog('peer kapandı'));
     thisPeer.on('disconnected', () => {
         if (thisPeer !== peer || thisPeer.destroyed) return;
+        dlog('sunucudan koptu (disconnected)');
         setIdLabel('Ağ Bekleniyor...');
         scheduleReconnect();
     });
@@ -749,6 +791,7 @@ function createPeer() {
 
     thisPeer.on('error', (err) => {
         console.error('Peer error:', err);
+        dlog('HATA ' + err.type + ': ' + (err.message || err));
         if (thisPeer !== peer) return;
         switch (err.type) {
             case 'unavailable-id':
@@ -826,6 +869,70 @@ function ensureOnline() {
 document.addEventListener('visibilitychange', ensureOnline);
 window.addEventListener('pageshow', (e) => { if (e.persisted) ensureOnline(); });
 window.addEventListener('online', ensureOnline);
+
+// ---- Bağlantı tanılama ----
+function probeSignalServer() {
+    return new Promise((resolve) => {
+        const o = PEER_SERVER_OPTIONS;
+        const secure = o.secure !== undefined ? o.secure : true;
+        const url = (secure ? 'wss://' : 'ws://') + (o.host || '0.peerjs.com') + ':' + (o.port || 443) +
+            (o.path || '/') + 'peerjs?key=' + (o.key || 'peerjs') +
+            '&id=diag' + Math.random().toString(36).slice(2, 8) + '&token=' + Math.random().toString(36).slice(2);
+        const t0 = Date.now();
+        let done = false, ws;
+        const finish = (r) => {
+            if (done) return; done = true;
+            try { ws.close(); } catch (e) {}
+            resolve(r + ' (' + (Date.now() - t0) + ' ms)');
+        };
+        try { ws = new WebSocket(url); } catch (e) { return resolve('WebSocket oluşturulamadı: ' + e.message); }
+        ws.onopen = () => finish('AÇILDI ✅ sunucuya ulaşılıyor');
+        ws.onerror = () => finish('HATA ❌ sunucuya ulaşılamıyor');
+        ws.onclose = (ev) => finish('KAPANDI code=' + ev.code);
+        setTimeout(() => finish('ZAMAN AŞIMI ❌'), 8000);
+    });
+}
+
+function renderDiag(probe) {
+    document.getElementById('diag-out').textContent = [
+        'Sürüm: ' + APP_BUILD,
+        'Güvenli bağlam (HTTPS): ' + window.isSecureContext,
+        'crypto.subtle: ' + !!(window.crypto && crypto.subtle),
+        'PeerJS yüklü: ' + (typeof Peer !== 'undefined'),
+        'Çevrimiçi: ' + navigator.onLine,
+        'peer.open: ' + (peer ? peer.open : 'peer yok'),
+        'Sinyal sunucusu WebSocket testi: ' + probe,
+        'UA: ' + navigator.userAgent,
+        '',
+        'Günlük:',
+        dbg.join('\n')
+    ].join('\n');
+}
+
+async function openDiagnostics() {
+    document.getElementById('diag-modal').classList.remove('hidden');
+    renderDiag('test ediliyor...');
+    renderDiag(await probeSignalServer());
+}
+
+document.getElementById('diag-close').addEventListener('click', () => document.getElementById('diag-modal').classList.add('hidden'));
+document.getElementById('diag-retry').addEventListener('click', () => {
+    document.getElementById('diag-modal').classList.add('hidden');
+    peerRetryCount = 0;
+    if (typeof Peer === 'undefined') { window.location.reload(); return; }
+    scheduleRecreate(0);
+});
+document.getElementById('diag-copy').addEventListener('click', async () => {
+    const text = document.getElementById('diag-out').textContent;
+    try { await navigator.clipboard.writeText(text); showToast('Kopyalandı'); }
+    catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length);
+        try { document.execCommand('copy'); showToast('Kopyalandı'); } catch (_) {}
+        ta.remove();
+    }
+});
 
 function startPingSystem() {
     if(pingIntervalTimer) clearInterval(pingIntervalTimer);
@@ -1337,8 +1444,7 @@ messageInput.addEventListener('input', function() {
 
 // Events
 copyMyIdBtn.addEventListener('click', async () => {
-    if (!peer) return;
-    if (!peer.open) { showToast('Ağa bağlanılıyor, yeniden deneniyor...'); scheduleRecreate(0); return; }
+    if (!peer || !peer.open) { openDiagnostics(); return; }
     try {
         await navigator.clipboard.writeText(myId);
     } catch (e) { // HTTP / eski iOS: panoya yazma API'si yok
