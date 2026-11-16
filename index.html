@@ -484,12 +484,33 @@
     </div>
 
     <script>
-const APP_BUILD = 'v3-ios-diag';
+const APP_BUILD = 'v5-lockdown-hint';
 const dbg = [];
 function dlog(msg) {
     dbg.push(new Date().toLocaleTimeString() + ' ' + msg);
     if (dbg.length > 80) dbg.shift();
 }
+function envHasWebRTC() {
+    return !!(window.RTCPeerConnection || window.webkitRTCPeerConnection);
+}
+function envInfo() {
+    const ua = navigator.userAgent || '';
+    const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const m = ua.match(/OS (\d+)[_.](\d+)/);
+    return {
+        ios: ios,
+        iosVersion: m ? m[1] + '.' + m[2] : '?',
+        // iOS'ta uygulama içi (WKWebView) tarayıcıların UA'sında "Safari/" bulunmaz
+        inApp: ios && !/Safari\//.test(ua),
+        chromeIOS: /CriOS|FxiOS|EdgiOS/.test(ua)
+    };
+}
+function showNoWebRtc() {
+    dlog('WebRTC yok: RTCPeerConnection tanımsız');
+    setIdLabel('WebRTC desteklenmiyor', 'error');
+    if (!diagAutoShown) { diagAutoShown = true; openDiagnostics(); }
+}
+
 window.addEventListener('error', (e) => {
     if (e.target && e.target.tagName) dlog('Kaynak yüklenemedi: ' + (e.target.src || e.target.href));
     else dlog('JS hatası: ' + e.message + ' (satır ' + e.lineno + ')');
@@ -700,7 +721,9 @@ async function initPeer() {
     try {
         loadHistory();
         setIdLabel('Ağ Bekleniyor...');
-        dlog('init: güvenli=' + window.isSecureContext + ' Peer=' + (typeof Peer) + ' subtle=' + !!(window.crypto && crypto.subtle));
+        dlog('init: güvenli=' + window.isSecureContext + ' Peer=' + (typeof Peer) + ' subtle=' + !!(window.crypto && crypto.subtle) + ' webrtc=' + envHasWebRTC());
+
+        if (!envHasWebRTC()) { showNoWebRtc(); return; }
 
         if (typeof Peer === 'undefined') {
             setIdLabel('PeerJS yüklenemedi', 'error');
@@ -746,7 +769,7 @@ function createPeer() {
     } catch (e) {
         dlog('new Peer hatası: ' + (e && e.message ? e.message : e));
         console.error('Peer oluşturulamadı:', e);
-        setIdLabel('Tarayıcı desteklemiyor', 'error');
+        showNoWebRtc();
         return;
     }
     peer = thisPeer;
@@ -812,7 +835,7 @@ function createPeer() {
                 showToast('Düğüm bulunamadı veya çevrimdışı.');
                 return;
             case 'browser-incompatible':
-                setIdLabel('Tarayıcı desteklemiyor', 'error');
+                showNoWebRtc();
                 return;
             case 'network':
             case 'server-error':
@@ -894,8 +917,22 @@ function probeSignalServer() {
 }
 
 function renderDiag(probe) {
-    document.getElementById('diag-out').textContent = [
+    const env = envInfo();
+    const advice = envHasWebRTC() ? [] : [
+        '⚠️ BU TARAYICIDA WebRTC YOK — uygulama (P2P) bu haliyle çalışamaz.',
+        'En olası neden: KİLİTLEME MODU (Lockdown Mode) açık; WebRTC\'yi kapatır.',
+        '• Yalnızca bu site için kapatın: Safari\'de adres çubuğundaki Sayfa Menüsü (aA) > Web Sitesi Ayarları > Kilitleme Modu\'nu kapatın, sayfayı yenileyin.',
+        '• Ya da: Ayarlar > Gizlilik ve Güvenlik > Kilitleme Modu.',
+        '• Siteyi bir uygulamanın içinden açtıysanız Safari\'de açın.',
+        '• iOS çok eskiyse (11 altı) WebRTC yoktur.',
+        ''
+    ];
+    document.getElementById('diag-out').textContent = advice.concat([
         'Sürüm: ' + APP_BUILD,
+        'WebRTC (RTCPeerConnection): ' + envHasWebRTC(),
+        'getUserMedia: ' + !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+        'iOS: ' + env.ios + ' (sürüm ' + env.iosVersion + ')',
+        'Uygulama içi tarayıcı olabilir: ' + env.inApp + ' | iOS üçüncü parti tarayıcı: ' + env.chromeIOS,
         'Güvenli bağlam (HTTPS): ' + window.isSecureContext,
         'crypto.subtle: ' + !!(window.crypto && crypto.subtle),
         'PeerJS yüklü: ' + (typeof Peer !== 'undefined'),
@@ -906,7 +943,7 @@ function renderDiag(probe) {
         '',
         'Günlük:',
         dbg.join('\n')
-    ].join('\n');
+    ]).join('\n');
 }
 
 async function openDiagnostics() {
